@@ -7,6 +7,7 @@ use Webkul\Core\Repositories\CoreConfigRepository;
 use Webkul\Core\Repositories\CountryRepository;
 use Webkul\Core\Repositories\CountryStateRepository;
 
+
 class Core
 {
     /**
@@ -15,6 +16,62 @@ class Core
      * @var string
      */
     const KRAYIN_VERSION = '2.1.2';
+
+    /**
+     * Currency symbols mapping
+     *
+     * @var array
+     */
+    protected $currencySymbols = [
+        'USD' => '$',
+        'EUR' => '€',
+        'GBP' => '£',
+        'JPY' => '¥',
+        'CNY' => '¥',
+        'KRW' => '₩',
+        'VND' => '₫',
+        'THB' => '฿',
+        'SGD' => 'S$',
+        'MYR' => 'RM',
+        'IDR' => 'Rp',
+        'PHP' => '₱',
+        'INR' => '₹',
+        'AUD' => 'A$',
+        'CAD' => 'C$',
+        'CHF' => 'CHF',
+        'SEK' => 'kr',
+        'NOK' => 'kr',
+        'DKK' => 'kr',
+        'PLN' => 'zł',
+        'CZK' => 'Kč',
+        'HUF' => 'Ft',
+        'RUB' => '₽',
+        'BRL' => 'R$',
+        'MXN' => '$',
+        'ARS' => '$',
+        'CLP' => '$',
+        'COP' => '$',
+        'PEN' => 'S/',
+        'TRY' => '₺',
+        'ZAR' => 'R',
+        'EGP' => 'E£',
+        'AED' => 'د.إ',
+        'SAR' => '﷼',
+        'QAR' => '﷼',
+        'KWD' => 'د.ك',
+        'BHD' => '.د.ب',
+        'OMR' => '﷼',
+        'JOD' => 'د.ا',
+        'LBP' => '£',
+        'ILS' => '₪',
+        'PKR' => '₨',
+        'BDT' => '৳',
+        'LKR' => '₨',
+        'NPR' => '₨',
+        'MMK' => 'K',
+        'LAK' => '₭',
+        'KHR' => '៛',
+    ];
 
     /**
      * Create a new instance.
@@ -197,14 +254,14 @@ class Core
     /**
      * Return currency symbol from currency code.
      *
-     * @param  float  $price
+     * @param  string  $code
      * @return string
      */
     public function currencySymbol($code)
     {
-        $formatter = new \NumberFormatter(app()->getLocale().'@currency='.$code, \NumberFormatter::CURRENCY);
-
-        return $formatter->getSymbol(\NumberFormatter::CURRENCY_SYMBOL);
+        $code = strtoupper($code);
+        
+        return $this->currencySymbols[$code] ?? $code;
     }
 
     /**
@@ -220,9 +277,37 @@ class Core
             $price = 0;
         }
 
-        $formatter = new \NumberFormatter(app()->getLocale(), \NumberFormatter::CURRENCY);
+        $currency = config('app.currency');
+        $symbol = $this->currencySymbol($currency);
+        
+        // Determine decimal places based on currency
+        $decimals = $this->getCurrencyDecimals($currency);
+        
+        // Format the number
+        $formattedPrice = number_format($price, $decimals, '.', ',');
+        
+        // Some currencies place symbol after the amount
+        $symbolAfterCurrencies = ['VND', 'EUR', 'SEK', 'NOK', 'DKK', 'CZK', 'HUF', 'PLN'];
+        
+        if (in_array($currency, $symbolAfterCurrencies)) {
+            return $formattedPrice . ' ' . $symbol;
+        }
+        
+        return $symbol . ' ' . $formattedPrice;
+    }
 
-        return $formatter->formatCurrency($price, config('app.currency'));
+    /**
+     * Get decimal places for currency formatting
+     *
+     * @param  string  $currency
+     * @return int
+     */
+    protected function getCurrencyDecimals($currency)
+    {
+        // Currencies that typically don't use decimal places
+        $noDecimalCurrencies = ['JPY', 'KRW', 'VND', 'IDR', 'CLP', 'KMF', 'DJF', 'GNF', 'ISK', 'PYG', 'RWF', 'UGX', 'VUV', 'XAF', 'XOF', 'XPF'];
+        
+        return in_array(strtoupper($currency), $noDecimalCurrencies) ? 0 : 2;
     }
 
     /**
